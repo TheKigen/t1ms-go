@@ -1,0 +1,13 @@
+[Unit]
+Description=Tribes 1 Master Server
+After=network-online.target syslog.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/t1ms/t1ms-go -c /opt/t1ms/config.xml
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+
