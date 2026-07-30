@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T1MS - Tribes Master Server</title>
+    <link rel="icon" href="/favicon.ico">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap');
+
+        :root, [data-theme="dark"] {
+            --bg-dark: #0a0e0a;
+            --bg-panel: #0d1410;
+            --bg-panel-alt: #111a15;
+            --bg-header: #0f1a14;
+            --bg-selected: #1a3020;
+            --border: #1a3828;
+            --border-bright: #2a5a3a;
+            --border-glow: #33dd55;
+            --text-primary: #88cc88;
+            --text-secondary: #66aa66;
+            --text-dim: #3d7a4a;
+            --text-bright: #aaffaa;
+            --accent: #44cc66;
+            --accent-dim: #2a8844;
+            --highlight: #66ff88;
+            --warning: #ccaa44;
+            --error: #cc4444;
+            --row-hover: #142a1c;
+            --tab-active: #1a3828;
+            --scrollbar-bg: #0a0e0a;
+            --scrollbar-thumb: #1a3828;
+            --hud-amber: #ccaa44;
+            --hud-red: #cc4444;
+            --team-storm: #6688cc;
+            --team-eagle: #cc8844;
+            --scanline-color: rgba(0,0,0,0.03);
+        }
+
+        [data-theme="light"] {
+            --bg-dark: #c8d4c8;
+            --bg-panel: #d0dcd0;
+            --bg-panel-alt: #c4d0c4;
+            --bg-header: #b8c8b8;
+            --bg-selected: #a0c0a0;
+            --border: #88aa88;
+            --border-bright: #5a8a5a;
+            --border-glow: #2a8833;
+            --text-primary: #1a3a1a;
+            --text-secondary: #2a5a2a;
+            --text-dim: #5a7a5a;
+            --text-bright: #0a2a0a;
+            --accent: #1a6633;
+            --accent-dim: #448855;
+            --highlight: #0a4420;
+            --warning: #886611;
+            --error: #aa2222;
+            --row-hover: #b8ccb8;
+            --tab-active: #a0c0a0;
+            --scrollbar-bg: #c8d4c8;
+            --scrollbar-thumb: #88aa88;
+            --hud-amber: #886611;
+            --hud-red: #aa2222;
+            --team-storm: #335599;
+            --team-eagle: #884411;
+            --scanline-color: rgba(0,0,0,0.02);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+        #app {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 24px);
+        }
+
+        /* ===== HUD Frame ===== */
+        .hud-frame {
+            position: relative;
+            border: 1px solid var(--border);
+            background: var(--bg-panel);
+        }
+        .hud-frame::before,
+        .hud-frame::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-color: var(--border-bright);
+            border-style: solid;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .hud-frame::before {
+            top: -1px; left: -1px;
+            border-width: 2px 0 0 2px;
+        }
+        .hud-frame::after {
+            bottom: -1px; right: -1px;
+            border-width: 0 2px 2px 0;
+        }
+        .hud-corner-tr,
+        .hud-corner-bl {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-color: var(--border-bright);
+            border-style: solid;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .hud-corner-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+        .hud-corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+
+        /* ===== Header ===== */
+        .header {
+            padding: 14px 20px;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .header-bar {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 5%, var(--accent-dim) 20%, var(--accent) 50%, var(--accent-dim) 80%, transparent 95%);
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .header h1 {
+            font-family: 'Orbitron', 'Share Tech Mono', monospace;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-bright);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+        .header h1 .t1 { color: var(--accent); }
+        .header-config {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-config label {
+            color: var(--text-dim);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .header-config input {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            padding: 3px 8px;
+            width: 260px;
+        }
+        .header-config input:focus {
+            outline: none;
+            border-color: var(--accent-dim);
+        }
+        .btn {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            padding: 3px 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .btn:hover {
+            border-color: var(--accent);
+            background: var(--tab-active);
+        }
+        .btn-close:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+        .refresh-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--text-dim);
+            font-size: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .refresh-indicator:hover { color: var(--text-primary); }
+        .refresh-dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: var(--accent-dim);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .refresh-indicator.paused .refresh-dot {
+            background: var(--text-dim);
+            animation: none;
+        }
+        @keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+        .motd {
+            margin-top: 6px;
+            color: var(--text-dim);
+            font-size: 11px;
+        }
+        .site-footer {
+            text-align: center;
+            padding: 16px 0;
+            color: var(--text-dim);
+            font-size: 11px;
+        }
+        .site-footer a {
+            color: var(--text-dim);
+            text-decoration: none;
+        }
+        .site-footer a:hover {
+            color: var(--text-primary);
+        }
+
+        /* ===== Stats Bar ===== */
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            padding: 6px 16px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .stat { display: flex; align-items: center; gap: 5px; }
+        .stat-label {
+            color: var(--text-dim);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .stat-value {
+            color: var(--highlight);
+            font-size: 13px;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+        }
+
+        /* ===== Tabs ===== */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0;
+        }
+        .tab {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-bottom: none;
+            color: var(--text-dim);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            padding: 6px 18px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.15s;
+            margin-right: 2px;
+        }
+        .tab:hover { color: var(--text-primary); background: var(--bg-panel); }
+        .tab.active {
+            background: var(--tab-active);
+            color: var(--text-bright);
+            border-color: var(--border-bright);
+        }
+
+        /* ===== List + Detail Split ===== */
+        .split-view {
+            border: 1px solid var(--border);
+            border-top: none;
+            background: var(--bg-panel);
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+        .list-pane {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 180px;
+            max-height: 50vh;
+        }
+        .detail-pane {
+            border-top: 2px solid var(--border-bright);
+            background: var(--bg-panel-alt);
+            min-height: 0;
+            overflow-y: auto;
+            position: relative;
+        }
+        .detail-pane::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+        }
+        .detail-empty {
+            padding: 30px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .panel-content { display: none; height: 100%; }
+        .panel-content.active { display: flex; flex-direction: column; }
+
+        /* ===== Tables ===== */
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background: var(--bg-header);
+            color: var(--text-dim);
+            font-size: 10px;
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 6px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            cursor: pointer;
+            user-select: none;
+            z-index: 1;
+        }
+        th:hover { color: var(--text-primary); }
+        th.sorted-asc::after { content: ' \25B2'; color: var(--accent); }
+        th.sorted-desc::after { content: ' \25BC'; color: var(--accent); }
+        th.no-sort { cursor: default; }
+        th.no-sort:hover { color: var(--text-dim); }
+        td {
+            padding: 5px 10px;
+            border-bottom: 1px solid #0f1a12;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        tr:hover td { background: var(--row-hover); }
+        tr.row-selected td {
+            background: var(--bg-selected);
+            color: var(--text-bright);
+            border-bottom-color: var(--border);
+        }
+        tr.row-selected td:first-child {
+            box-shadow: inset 3px 0 0 var(--accent);
+        }
+        tr.clickable { cursor: pointer; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        .players-full { color: var(--error); }
+        .players-active { color: var(--highlight); }
+        .players-empty { color: var(--text-dim); }
+        .icon-lock { font-size: 11px; }
+        .icon-none { color: var(--text-dim); }
+        .icon-dedicated { font-size: 11px; }
+
+        /* ===== Detail Panel - Server ===== */
+        .detail-inner {
+            padding: 14px 18px;
+        }
+        .detail-title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .detail-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 14px;
+            color: var(--text-bright);
+            letter-spacing: 1px;
+        }
+        .detail-subtitle {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-left: 12px;
+        }
+        .detail-body {
+            display: flex;
+            gap: 18px;
+        }
+        .detail-info-col {
+            flex: 0 0 auto;
+            min-width: 280px;
+        }
+        .detail-lists-col {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Info fields - Tribes style key:value pairs */
+        .info-group {
+            margin-bottom: 10px;
+        }
+        .info-group-title {
+            color: var(--accent);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 4px;
+        }
+        .info-row {
+            display: flex;
+            padding: 2px 0;
+        }
+        .info-key {
+            color: var(--text-dim);
+            font-size: 11px;
+            text-transform: uppercase;
+            width: 90px;
+            flex-shrink: 0;
+        }
+        .info-val {
+            color: var(--text-primary);
+            font-size: 12px;
+        }
+        .info-val.bright { color: var(--text-bright); }
+        .info-val.warn { color: var(--warning); }
+
+        .server-info-text {
+            color: var(--text-secondary);
+            font-size: 11px;
+            padding: 2px 0;
+            line-height: 1.5;
+        }
+
+        /* Sub-lists (teams / players) */
+        .sub-list {
+            min-width: 0;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            max-height: 220px;
+        }
+        .sub-list-teams {
+            max-height: 120px;
+            flex-shrink: 0;
+        }
+        .sub-list-players {
+            flex: 1;
+        }
+        .sub-list-header {
+            background: var(--bg-header);
+            color: var(--accent);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 5px 10px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .sub-list-scroll {
+            overflow-y: auto;
+            flex: 1;
+        }
+        .sub-list table tr:hover td { background: var(--row-hover); }
+
+        /* ===== Detail Panel - Master ===== */
+        .master-server-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            margin-top: 8px;
+        }
+        .master-server-list td {
+            font-size: 11px;
+            padding: 3px 10px;
+        }
+
+        /* ===== Master row local marker ===== */
+        .local-badge {
+            display: inline-block;
+            color: var(--accent);
+            font-size: 9px;
+            border: 1px solid var(--accent-dim);
+            padding: 0 4px;
+            margin-left: 6px;
+            vertical-align: middle;
+            letter-spacing: 1px;
+        }
+
+        /* ===== Status messages ===== */
+        .status-msg {
+            padding: 30px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+        .status-msg.error { color: var(--error); }
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.5s steps(4) infinite;
+        }
+        @keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
+
+        /* ===== Setup tab ===== */
+        .setup-pane {
+            padding: 20px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .setup-section {
+            margin-bottom: 20px;
+        }
+        .setup-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 14px;
+            color: var(--text-bright);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-bright);
+        }
+        .setup-subtitle {
+            color: var(--accent);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+        }
+        .setup-pane p {
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        .setup-pane code {
+            color: var(--text-bright);
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .setup-code {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            font-size: 12px;
+            line-height: 1.7;
+            overflow-x: auto;
+            white-space: pre;
+            color: var(--text-primary);
+        }
+
+        /* ===== Scanline overlay ===== */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg, transparent, transparent 2px,
+                var(--scanline-color) 2px, var(--scanline-color) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        #matrixCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+            display: none;
+            pointer-events: none;
+        }
+        body.matrix-active #matrixCanvas { display: block; }
+        body.matrix-active { background: #000; }
+        body.matrix-active #app { position: relative; z-index: 1; }
+
+        @media (max-width: 900px) {
+            .detail-body { flex-direction: column; }
+            .detail-info-col { min-width: 0; }
+            .detail-lists-col { flex-direction: column; }
+            .header h1 { font-size: 16px; }
+            .header-config input { width: 160px; }
+            td, th { padding: 4px 6px; font-size: 11px; }
+            .list-pane { max-height: 40vh; }
+        }
+    </style>
+</head>
+<body>
+<canvas id="matrixCanvas"></canvas>
+<div id="app">
+    <!-- Header -->
+    <div class="header hud-frame">
+        <div class="hud-corner-tr"></div>
+        <div class="hud-corner-bl"></div>
+        <div class="header-bar"></div>
+        <div class="header-top">
+            <h1><span class="t1">Tribes 1</span> Master Server</h1>
+            <div class="header-config">
+                <label>API</label>
+                <input type="text" id="apiBase" value="" placeholder="(this server)">
+                <button class="btn" onclick="applyApiBase()">Connect</button>
+                <button class="btn" id="themeToggle" onclick="toggleTheme()">Light</button>
+                <div class="refresh-indicator" id="refreshToggle" onclick="toggleAutoRefresh()">
+                    <div class="refresh-dot"></div>
+                    <span id="refreshLabel">AUTO</span>
+                </div>
+            </div>
+        </div>
+        <div class="motd" id="motd"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar hud-frame">
+        <div class="hud-corner-tr"></div>
+        <div class="hud-corner-bl"></div>
+        <div class="stat">
+            <span class="stat-label">Servers</span>
+            <span class="stat-value" id="statServers">-</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Players</span>
+            <span class="stat-value" id="statPlayers">-</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Max Players</span>
+            <span class="stat-value" id="statMaxPlayers">-</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Clients</span>
+            <span class="stat-value" id="statClients">-</span>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <div class="tab active" data-tab="servers" onclick="switchTab('servers')">Servers</div>
+        <div class="tab" data-tab="masters" onclick="switchTab('masters')">Masters</div>
+        <div class="tab" data-tab="setup" onclick="switchTab('setup')">Setup</div>
+    </div>
+
+    <!-- Split View -->
+    <div class="split-view">
+        <!-- Servers Tab -->
+        <div class="panel-content active" id="tab-servers">
+            <div class="list-pane">
+                <div class="status-msg loading-dots" id="serversLoading">Querying servers</div>
+                <div id="serversContent" style="display:none">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="no-sort text-center" style="width:40px" title="Dedicated / Password">&nbsp;</th>
+                                <th data-sort="name">Server Name</th>
+                                <th data-sort="num-players" class="text-right">Players</th>
+                                <th data-sort="mission">Map</th>
+                                <th data-sort="server-type">Type</th>
+                                <th data-sort="mod">Mod</th>
+                                <th data-sort="ping" class="text-right">Ping</th>
+                                <th data-sort="address">Address</th>
+                            </tr>
+                        </thead>
+                        <tbody id="serversBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="detail-pane" id="serverDetailPane">
+                <div class="detail-empty" id="serverDetailEmpty">Select a server to view details</div>
+                <div id="serverDetailContent" style="display:none"></div>
+            </div>
+        </div>
+
+        <!-- Masters Tab -->
+        <div class="panel-content" id="tab-masters">
+            <div class="list-pane">
+                <div class="status-msg loading-dots" id="mastersLoading">Querying masters</div>
+                <div id="mastersContent" style="display:none">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th data-sort="address">Address</th>
+                                <th data-sort="server-count" class="text-right">Servers</th>
+                                <th data-sort="ping" class="text-right">Ping</th>
+                                <th data-sort="last-reply">Last Reply</th>
+                                <th data-sort="message-of-the-day">MOTD</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mastersBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="detail-pane" id="masterDetailPane">
+                <div class="detail-empty" id="masterDetailEmpty">Select a master to view details</div>
+                <div id="masterDetailContent" style="display:none"></div>
+            </div>
+        </div>
+
+        <!-- Setup Tab -->
+        <div class="panel-content" id="tab-setup">
+            <div class="setup-pane">
+                <div class="setup-section">
+                    <div class="setup-title">Configure Starsiege: Tribes Master Servers</div>
+                    <p>To use these master servers in Starsiege: Tribes, add the following lines to your <code>clientPrefs.cs</code> file. This file is located in the <code>config</code> folder of your Tribes installation directory.</p>
+                </div>
+
+                <div class="setup-section">
+                    <div class="setup-subtitle">Step 1 &mdash; Locate Config File</div>
+                    <p>Find <code>clientPrefs.cs</code> in your Tribes installation:</p>
+                    <div class="setup-code"><code>C:\Dynamix\Tribes\config\clientPrefs.cs</code></div>
+                    <p>The path may differ depending on your installation. Open this file with a text editor such as Notepad.</p>
+                </div>
+
+                <div class="setup-section">
+                    <div class="setup-subtitle">Step 2 &mdash; Update Master Server List</div>
+                    <p>Find the lines starting with <code>$Server::MasterAddressN</code> and replace them with the following:</p>
+                    <div class="setup-code" id="setupMasterLines"><code>Loading master server list...</code></div>
+                    <button class="btn" id="setupCopyBtn" onclick="copySetupLines()" style="margin-top:8px">Copy to Clipboard</button>
+                </div>
+
+                <div class="setup-section">
+                    <div class="setup-subtitle">Step 3 &mdash; Save and Launch</div>
+                    <p>Save the file and launch Starsiege: Tribes. The game will now query these master servers for the server list.</p>
+                </div>
+
+                <div class="setup-section">
+                    <div class="setup-subtitle">Alternative &mdash; In-Game Console</div>
+                    <p>You can also set master servers from the in-game console (press <code>~</code> to open). Enter each line below, then run <code>exportVariables("config\\clientPrefs.cs");</code> to save.</p>
+                    <div class="setup-code" id="setupConsoleLines"><code>Loading master server list...</code></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="site-footer">
+    <a href="https://github.com/TheKigen/t1ms-go/" target="_blank" rel="noopener noreferrer">t1ms-go on GitHub</a>
+</footer>
+
+<script src="/query.js"></script>
+</body>
+</html>
