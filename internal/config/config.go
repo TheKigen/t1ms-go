@@ -30,18 +30,18 @@ type MasterEntry struct {
 }
 
 type MasterSection struct {
-	XMLName               xml.Name      `xml:"master-config"`
-	ListenAddress         string        `xml:"listen-address"`
-	LocalAddress          string        `xml:"local-address"`
-	Name                  string        `xml:"name"`
-	MOTD                  string        `xml:"message-of-the-day"`
-	Masters               MastersList   `xml:"masters"`
-	RateLimit             uint32        `xml:"rate-limit"`
-	MasterQueryTimeSeconds int64        `xml:"master-query-time-seconds"`
-	GameQueryTimeSeconds  int64         `xml:"game-query-time-seconds"`
-	GameExpireQueries     int64         `xml:"game-expire-queries"`
-	BuildPacketsEverySecs int64         `xml:"build-packets-every-seconds"`
-	MinPacketSize         int64         `xml:"min-packet-size"`
+	XMLName                xml.Name    `xml:"master-config"`
+	ListenAddress          string      `xml:"listen-address"`
+	LocalAddress           string      `xml:"local-address"`
+	Name                   string      `xml:"name"`
+	MOTD                   string      `xml:"message-of-the-day"`
+	Masters                MastersList `xml:"masters"`
+	RateLimit              uint32      `xml:"rate-limit"`
+	MasterQueryTimeSeconds int64       `xml:"master-query-time-seconds"`
+	GameQueryTimeSeconds   int64       `xml:"game-query-time-seconds"`
+	GameExpireQueries      int64       `xml:"game-expire-queries"`
+	BuildPacketsEverySecs  int64       `xml:"build-packets-every-seconds"`
+	MinPacketSize          int64       `xml:"min-packet-size"`
 }
 
 type MastersList struct {
@@ -73,7 +73,7 @@ func Load(filename string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	data, err := io.ReadAll(f)
 	if err != nil {
@@ -92,7 +92,7 @@ func (c *Config) Reload(filename string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	data, err := io.ReadAll(f)
 	if err != nil {
@@ -123,10 +123,12 @@ func (c *Config) Save(filename string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
-	_, err = f.Write(data)
-	return err
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 func WriteDefault(filename string) *Config {
@@ -159,12 +161,12 @@ func WriteDefault(filename string) *Config {
 	if err != nil {
 		return cfg
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	data, err := xml.MarshalIndent(cfg, "", "\t")
 	if err != nil {
 		return cfg
 	}
-	f.Write(data)
+	_, _ = f.Write(data)
 	return cfg
 }

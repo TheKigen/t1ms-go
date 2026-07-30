@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	t1net "github.com/TheKigen/t1net-go"
 	"github.com/TheKigen/t1ms-go/internal/config"
 	"github.com/TheKigen/t1ms-go/internal/master"
+	t1net "github.com/TheKigen/t1net-go"
 )
 
 func testWebSetup() (*Service, *master.Service) {

@@ -1,0 +1,10 @@
+# This repository is edited on both Windows and Unix machines. Without an
+# explicit policy, Windows checkouts reintroduce CRLF, which makes gofmt
+# report every .go file as unformatted.
+#
+# Store all text as LF in the repository, and check it out as LF everywhere.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.ico binary
+*.exe binary

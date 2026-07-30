@@ -351,12 +351,12 @@ func (s *Service) listen(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("listen UDP: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Close the connection when context is cancelled for clean shutdown
 	go func() {
 		<-ctx.Done()
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	s.logger.Printf("Master listening on %s.", listenAddr)
@@ -532,7 +532,7 @@ func (s *Service) queryGameServer(gs *GameServer) {
 	s.config.RUnlock()
 
 	result, err := t1net.GameInfoQuery(fmt.Sprintf("%s:%d", gs.IP.String(), gs.Port), &t1net.QueryOptions{
-		Timeout: 3 * time.Second,
+		Timeout:      3 * time.Second,
 		LocalAddress: localAddr,
 	})
 

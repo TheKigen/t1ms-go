@@ -41,7 +41,6 @@ func TestNewService(t *testing.T) {
 	}
 }
 
-
 // --- LoadConfig ---
 
 func TestLoadConfig_DefaultRateLimit(t *testing.T) {
@@ -748,9 +747,14 @@ func setupUDP(t *testing.T) (*net.UDPConn, *net.UDPConn) {
 	actualAddr := serverConn.LocalAddr().(*net.UDPAddr)
 	clientConn, err := net.DialUDP("udp4", nil, actualAddr)
 	if err != nil {
-		serverConn.Close()
+		_ = serverConn.Close()
 		t.Fatal(err)
 	}
+
+	t.Cleanup(func() {
+		_ = clientConn.Close()
+		_ = serverConn.Close()
+	})
 
 	return serverConn, clientConn
 }
@@ -760,7 +764,6 @@ func TestHandleUDP_Heartbeat(t *testing.T) {
 	svc.LoadConfig()
 
 	serverConn, clientConn := setupUDP(t)
-	defer clientConn.Close()
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- svc.handleUDP(serverConn) }()
@@ -772,7 +775,7 @@ func TestHandleUDP_Heartbeat(t *testing.T) {
 	}
 
 	time.Sleep(50 * time.Millisecond)
-	serverConn.Close()
+	_ = serverConn.Close()
 	<-errCh
 
 	_, total := svc.ServerCounts()
@@ -792,7 +795,6 @@ func TestHandleUDP_Query(t *testing.T) {
 	svc.buildPackets() // Ensure packets exist
 
 	serverConn, clientConn := setupUDP(t)
-	defer clientConn.Close()
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- svc.handleUDP(serverConn) }()
@@ -804,7 +806,9 @@ func TestHandleUDP_Query(t *testing.T) {
 	}
 
 	// Read response
-	clientConn.SetReadDeadline(time.Now().Add(time.Second))
+	if err := clientConn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
 	buf := make([]byte, 1024)
 	n, err := clientConn.Read(buf)
 	if err != nil {
@@ -818,7 +822,7 @@ func TestHandleUDP_Query(t *testing.T) {
 		t.Errorf("key bytes = [%#x, %#x], want [0xAA, 0xBB]", buf[4], buf[5])
 	}
 
-	serverConn.Close()
+	_ = serverConn.Close()
 	<-errCh
 }
 
@@ -828,7 +832,6 @@ func TestHandleUDP_Query5Bytes(t *testing.T) {
 	svc.buildPackets()
 
 	serverConn, clientConn := setupUDP(t)
-	defer clientConn.Close()
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- svc.handleUDP(serverConn) }()
@@ -839,7 +842,9 @@ func TestHandleUDP_Query5Bytes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	clientConn.SetReadDeadline(time.Now().Add(time.Second))
+	if err := clientConn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
 	buf := make([]byte, 1024)
 	_, err = clientConn.Read(buf)
 	if err != nil {
@@ -847,7 +852,7 @@ func TestHandleUDP_Query5Bytes(t *testing.T) {
 	}
 
 	time.Sleep(50 * time.Millisecond)
-	serverConn.Close()
+	_ = serverConn.Close()
 	<-errCh
 
 	_, client, found := svc.LastClient()
@@ -864,7 +869,6 @@ func TestHandleUDP_InvalidType(t *testing.T) {
 	svc.LoadConfig()
 
 	serverConn, clientConn := setupUDP(t)
-	defer clientConn.Close()
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- svc.handleUDP(serverConn) }()
@@ -875,7 +879,7 @@ func TestHandleUDP_InvalidType(t *testing.T) {
 	}
 
 	time.Sleep(50 * time.Millisecond)
-	serverConn.Close()
+	_ = serverConn.Close()
 	<-errCh
 
 	if svc.InvalidPackets() != 1 {
@@ -888,7 +892,6 @@ func TestHandleUDP_TooShort(t *testing.T) {
 	svc.LoadConfig()
 
 	serverConn, clientConn := setupUDP(t)
-	defer clientConn.Close()
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- svc.handleUDP(serverConn) }()
@@ -900,7 +903,7 @@ func TestHandleUDP_TooShort(t *testing.T) {
 	}
 
 	time.Sleep(50 * time.Millisecond)
-	serverConn.Close()
+	_ = serverConn.Close()
 	<-errCh
 
 	if svc.InvalidPackets() != 1 {
@@ -913,7 +916,6 @@ func TestHandleUDP_InvalidQueryLength(t *testing.T) {
 	svc.LoadConfig()
 
 	serverConn, clientConn := setupUDP(t)
-	defer clientConn.Close()
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- svc.handleUDP(serverConn) }()
@@ -925,7 +927,7 @@ func TestHandleUDP_InvalidQueryLength(t *testing.T) {
 	}
 
 	time.Sleep(50 * time.Millisecond)
-	serverConn.Close()
+	_ = serverConn.Close()
 	<-errCh
 
 	if svc.InvalidPackets() != 1 {
@@ -939,19 +941,20 @@ func TestHandleUDP_RateLimit(t *testing.T) {
 	svc.rateLimit.Store(1) // very low limit
 
 	serverConn, clientConn := setupUDP(t)
-	defer clientConn.Close()
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- svc.handleUDP(serverConn) }()
 
 	// Send multiple packets to trigger rate limiting
 	for i := 0; i < 5; i++ {
-		clientConn.Write([]byte{0x10, 0x05, 0x00, 0x00})
+		if _, err := clientConn.Write([]byte{0x10, 0x05, 0x00, 0x00}); err != nil {
+			t.Fatal(err)
+		}
 		time.Sleep(5 * time.Millisecond)
 	}
 
 	time.Sleep(50 * time.Millisecond)
-	serverConn.Close()
+	_ = serverConn.Close()
 	<-errCh
 
 	_, client, found := svc.LastClient()
@@ -968,12 +971,12 @@ func TestHandleUDP_ConnectionClosed(t *testing.T) {
 	svc.LoadConfig()
 
 	serverConn, clientConn := setupUDP(t)
-	clientConn.Close()
+	_ = clientConn.Close()
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- svc.handleUDP(serverConn) }()
 
-	serverConn.Close()
+	_ = serverConn.Close()
 	err := <-errCh
 	if err != nil {
 		t.Errorf("handleUDP should return nil on close, got: %v", err)

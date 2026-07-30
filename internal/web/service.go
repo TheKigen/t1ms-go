@@ -58,9 +58,9 @@ type Service struct {
 	listenAddress  string
 	buildPagesSecs atomic.Int64
 
-	addServerAPIKey   atomic.Value // string
-	addServerRateMap  sync.Map     // string -> *atomic.Uint32
-	addServerRateMax  atomic.Uint32
+	addServerAPIKey  atomic.Value // string
+	addServerRateMap sync.Map     // string -> *atomic.Uint32
+	addServerRateMax atomic.Uint32
 
 	masterPageXML  []byte
 	serverPageXML  []byte
@@ -136,7 +136,9 @@ func (s *Service) Run(ctx context.Context) error {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		srv.Shutdown(shutdownCtx)
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			s.logger.Printf("Web server shutdown: %v", err)
+		}
 	}()
 
 	s.logger.Printf("Web listening on %s.", addr)
@@ -450,5 +452,5 @@ func (s *Service) handleAddServer(w http.ResponseWriter, req *http.Request) {
 	s.master.AddGameServer(address)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "OK")
+	_, _ = fmt.Fprint(w, "OK")
 }
