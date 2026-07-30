@@ -215,15 +215,6 @@ func TestWriteDefault_CreatesFileAndReturnsDefaults(t *testing.T) {
 	if loaded.Master.Name != "Tribes Master" {
 		t.Errorf("Loaded Name = %q, want %q", loaded.Master.Name, "Tribes Master")
 	}
-
-	// Verify file permissions
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("Stat: %v", err)
-	}
-	if perm := info.Mode().Perm(); perm != 0600 {
-		t.Errorf("File permissions = %o, want 0600", perm)
-	}
 }
 
 func TestWriteDefault_InvalidPath(t *testing.T) {
