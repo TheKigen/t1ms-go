@@ -15,8 +15,11 @@
 !go.mod
 
 !*.html
+!*.js
+!*.ico
 
 !README.md
+!CLAUDE.md
 !LICENSE
 
 !nginx-example.conf

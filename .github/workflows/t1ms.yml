@@ -1,4 +1,4 @@
-name: Run Tests
+name: CI
 
 on:
   push:
@@ -15,36 +15,37 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.21'
-          check-latest: true
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: Setup golangci-lint
-        uses: golangci/golangci-lint-action@v9.2.1
+      - name: Setup Go
+        uses: actions/setup-go@v6
         with:
-          version: v1.56.2
+          go-version: '1.25'
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
           args: --verbose
+
   test:
     needs: lint
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-        go: [1.21, 1.22]
-    name: ${{ matrix.os }} @ Go ${{ matrix.go }}
+    name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Set up Go ${{ matrix.go }}
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
-
-      - name: Checkout Code
-        uses: actions/checkout@v6
+          go-version: '1.26'
+      - name: Run tests with coverage
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v5
         with:
-          ref: ${{ github.ref }}
-
-      - name: Run Tests
-        run: go test -v ./...
+          files: coverage.txt
+          fail_ci_if_error: false
